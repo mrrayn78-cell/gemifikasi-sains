@@ -1,0 +1,43 @@
+const SHEET_NAME = "Leaderboard";
+
+function doPost(e) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const data = JSON.parse(e.postData.contents);
+    
+    // Simpan rekod baru
+    sheet.appendRow([new Date(), data.name, data.className || '-', Number(data.score)]);
+    
+    return ContentService.createTextOutput(JSON.stringify({ status: "success" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doGet(e) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+    const rows = sheet.getDataRange().getValues();
+    
+    // Buang baris header
+    rows.shift();
+    
+    // Petakan dan susun mengikut markah tertinggi (Top 10)
+    let leaders = rows.map(r => ({
+      name: r[1],
+      className: r[2],
+      score: Number(r[3])
+    }));
+    
+    leaders.sort((a, b) => b.score - a.score);
+    leaders = leaders.slice(0, 10);
+    
+    return ContentService.createTextOutput(JSON.stringify({ status: "success", data: leaders }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
