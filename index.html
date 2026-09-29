@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cabaran Sains KSSR Tahun 4</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Canvas Confetti untuk efek kemenangan -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    @keyframes pulse-fast {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .timer-danger {
+      animation: pulse-fast 0.6s infinite;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-900 via-sky-800 to-emerald-900 min-h-screen text-slate-800 flex items-center justify-center p-3 sm:p-6 font-sans">
+
+  <!-- Container Utama Web -->
+  <div class="bg-white/95 backdrop-blur-md w-full max-w-2xl rounded-3xl shadow-2xl border border-white/40 p-5 sm:p-8 relative overflow-hidden transition-all duration-300">
+
+    <!-- Butang Tetapan Sambungan Supabase (Bucu Atas) -->
+    <div class="flex justify-end mb-2">
+      <button onclick="bukaModalConfig()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-full font-semibold border flex items-center gap-1 transition">
+        ⚙️ Tetapan Pangkalan Data
+      </button>
+    </div>
+
+    <!-- SKRIN 1: DAFTAR & MULA -->
+    <div id="skrin-mula" class="space-y-6">
+      <div class="text-center space-y-2">
+        <span class="inline-block bg-sky-100 text-sky-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+          KSSR Semakan • 10 Unit Lengkap
+        </span>
+        <h1 class="text-3xl sm:text-4xl font-black text-slate-800 tracking-tight">
+          🚀 Misi Saintis Muda
+        </h1>
+        <p class="text-slate-500 text-sm">
+          Jawab 10 soalan mencabar, kumpul streak combo, dan cipta rekod di papan pendahulu!
+        </p>
+      </div>
+
+      <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nama Saintis (Nama Murid)</label>
+          <input type="text" id="input-nama" placeholder="Contoh: Ryan Ray" 
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white font-medium" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Kelas</label>
+          <input type="text" id="input-kelas" placeholder="Contoh: 4 Cemerlang" 
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white font-medium" />
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <button onclick="mulaPermainan()" 
+          class="w-full bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-600 hover:to-indigo-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg shadow-sky-500/30 transform active:scale-95 transition text-base">
+          Mula Pengembaraan 🔬
+        </button>
+        <button onclick="paparPapanPendahulu()" 
+          class="w-full bg-white hover:bg-slate-50 text-slate-700 font-bold py-2.5 rounded-xl border border-slate-200 transition text-sm">
+          🏆 Lihat Papan Pendahulu Sekolah
+        </button>
+      </div>
+    </div>
+
+    <!-- SKRIN 2: PERMAINAN & KUIZ -->
+    <div id="skrin-kuiz" class="hidden space-y-5">
+      <!-- Status Bar: Pemasa, Streak, Skor -->
+      <div class="flex items-center justify-between bg-slate-100 p-3 rounded-2xl">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold text-slate-500">Masa:</span>
+          <span id="label-pemasa" class="text-sm font-black bg-white px-2.5 py-1 rounded-lg shadow-sm border border-slate-200 text-sky-600">
+            15s
+          </span>
+        </div>
+        <div id="badge-streak" class="hidden bg-amber-500 text-white text-xs font-black px-2.5 py-1 rounded-full shadow animate-bounce">
+          🔥 Streak x<span id="nilai-streak">1</span>
+        </div>
+        <div class="text-right">
+          <span class="text-xs font-bold text-slate-500">Mata:</span>
+          <span id="label-skor" class="text-lg font-black text-indigo-600">0</span>
+        </div>
+      </div>
+
+      <!-- Bar Kemajuan Soalan -->
+      <div>
+        <div class="flex justify-between text-xs font-bold text-slate-400 mb-1">
+          <span id="label-unit">Unit 1</span>
+          <span id="label-kemajuan">Soalan 1 / 10</span>
+        </div>
+        <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+          <div id="bar-kemajuan" class="bg-sky-500 h-full w-0 transition-all duration-300"></div>
+        </div>
+      </div>
+
+      <!-- Teks Soalan -->
+      <div class="min-h-[70px] flex items-center">
+        <h2 id="teks-soalan" class="text-base sm:text-lg font-bold text-slate-800 leading-snug">
+          Soalan Sains dipaparkan di sini...
+        </h2>
+      </div>
+
+      <!-- Pilihan Jawapan -->
+      <div id="kontena-pilihan" class="space-y-2.5">
+        <!-- Pilihan A, B, C, D akan dibina menggunakan JavaScript -->
+      </div>
+    </div>
+
+    <!-- SKRIN 3: KEPUTUSAN & MARKAH AKHIR -->
+    <div id="skrin-keputusan" class="hidden text-center space-y-5">
+      <div class="space-y-1">
+        <div id="lencana-icon" class="text-5xl">🎖️</div>
+        <h2 id="lencana-tajuk" class="text-2xl font-black text-slate-800">Cemerlang!</h2>
+        <p id="lencana-penerangan" class="text-xs text-slate-500">Anda menguasai sukatan Sains Tahun 4 dengan baik!</p>
+      </div>
+
+      <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 inline-block w-full max-w-sm">
+        <div class="text-xs font-bold text-slate-400 uppercase">Jumlah Skor Keseluruhan</div>
+        <div id="skor-akhir" class="text-5xl font-black text-indigo-600 my-1">0</div>
+        <div class="text-xs text-slate-500">Ketepatan: <span id="peratus-ketepatan" class="font-bold text-slate-700">0%</span></div>
+      </div>
+
+      <div id="status-hantar" class="text-xs font-semibold text-slate-500">
+        Menghubungi pangkalan data awan...
+      </div>
+
+      <div class="space-y-2 pt-2">
+        <button onclick="paparPapanPendahulu()" 
+          class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl shadow-lg shadow-emerald-600/30 transition text-sm">
+          🏆 Semak Kedudukan Papan Pendahulu
+        </button>
+        <button onclick="keSkrinMula()" 
+          class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition text-sm">
+          Main Semula 🔄
+        </button>
+      </div>
+    </div>
+
+    <!-- SKRIN 4: PAPAN PENDAHULU (LEADERBOARD) -->
+    <div id="skrin-leaderboard" class="hidden space-y-4">
+      <div class="text-center">
+        <h2 class="text-2xl font-black text-slate-800">🏆 Carta Juara Sains</h2>
+        <p class="text-xs text-slate-500">Senarai 10 Saintis Muda Markah Tertinggi</p>
+      </div>
+
+      <div class="overflow-hidden border border-slate-200 rounded-2xl shadow-sm">
+        <table class="w-full text-left text-xs sm:text-sm">
+          <thead class="bg-slate-100 text-slate-600 uppercase font-black tracking-wider text-[11px]">
+            <tr>
+              <th class="p-3 text-center">Ked.</th>
+              <th class="p-3">Nama</th>
+              <th class="p-3">Kelas</th>
+              <th class="p-3 text-right">Skor</th>
+            </tr>
+          </thead>
+          <tbody id="badan-leaderboard" class="divide-y divide-slate-100 bg-white">
+            <tr><td colspan="4" class="p-4 text-center text-slate-400">Memuatkan data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <button onclick="keSkrinMula()" 
+        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition text-sm">
+        Kembali ke Halaman Utama
+      </button>
+    </div>
+
+    <!-- MODAL TETAPAN SUPABASE -->
+    <div id="modal-config" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <h3 class="text-lg font-black text-slate-800">⚙️ Konfigurasi Supabase</h3>
+        <p class="text-xs text-slate-500 leading-relaxed">
+          Masukkan <strong>Project URL<https://uknagifsmeysuejlxdki.supabase.co/rest/v1/> dan <strong>Anon Key / Publishable Key<sb_publishable_WioufiM4ntH3GvyVScsEAg_-6xuMzct> dari Supabase anda untuk merekod markah ke pelayan awan.
+        </p>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Project URL</label>
+            <input type="text" id="cfg-url" placeholder="https://xyzcompany.supabase.co" 
+              class="w-full text-xs px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">Publishable / Anon Key</label>
+            <input type="password" id="cfg-key" placeholder="sb_publishable_... atau eyJhbGci..." 
+              class="w-full text-xs px-3 py-2 border rounded-lg focus:ring-2 focus:ring-sky-500 outline-none" />
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="tutupModalConfig()" class="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg">Batal</button>
+          <button onclick="simpanConfig()" class="px-4 py-2 text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white rounded-lg">Simpan Tetapan</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // --- 1. SOALAN SAINS TAHUN 4 KSSR SEMAKAN (10 UNIT) ---
+    const bankSoalan = [
+      {
+        unit: "Unit 1: Kemahiran Saintifik",
+        soalan: "Antara berikut, yang manakah merupakan pemboleh ubah yang diperhatikan atau diukur dalam suatu penyiasatan?",
+        pilihan: ["Pemboleh ubah dimanipulasikan", "Pemboleh ubah bergerak balas", "Pemboleh ubah dimalarkan", "Hipotesis"],
+        jawapan: 1
+      },
+      {
+        unit: "Unit 2: Manusia",
+        soalan: "Apakah laluan udara yang betul semasa manusia menarik nafas?",
+        pilihan: [
+          "Hidung ➔ Peparu ➔ Trakea",
+          "Trakea ➔ Hidung ➔ Peparu",
+          "Hidung ➔ Trakea ➔ Peparu",
+          "Peparu ➔ Trakea ➔ Hidung"
+        ],
+        jawapan: 2
+      },
+      {
+        unit: "Unit 3: Haiwan",
+        soalan: "Haiwan seperti belalang dan rama-rama bernafas melalui struktur khas yang dikenali sebagai:",
+        pilihan: ["Insang", "Spirakel", "Peparu", "Kulit lembap"],
+        jawapan: 1
+      },
+      {
+        unit: "Unit 4: Tumbuhan",
+        soalan: "Apakah dua hasil utama daripada proses fotosintesis tumbuhan?",
+        pilihan: [
+          "Kanji dan Oksigen",
+          "Karbon Dioksida dan Air",
+          "Klorofil dan Cahaya Matahari",
+          "Gula dan Karbon Dioksida"
+        ],
+        jawapan: 0
+      },
+      {
+        unit: "Unit 5: Sifat Cahaya",
+        soalan: "Sudip kelihatan bengkok apabila diletakkan di dalam gelas berisi air. Apakah fenomena sifat cahaya ini?",
+        pilihan: ["Pantulan cahaya", "Cahaya bergerak lurus", "Pembiasan cahaya", "Pembentukan bayang-bayang"],
+        jawapan: 2
+      },
+      {
+        unit: "Unit 6: Bunyi",
+        soalan: "Fenomena pantulan bunyi yang berulang-ulang di dalam dewan kosong dikenali sebagai:",
+        pilihan: ["Getaran", "Gema", "Kenyaringan", "Serapan"],
+        jawapan: 1
+      },
+      {
+        unit: "Unit 7: Tenaga",
+        soalan: "Apakah perubahan bentuk tenaga yang berlaku apabila lampu suluh dinyalakan?",
+        pilihan: [
+          "Tenaga Kimia ➔ Tenaga Elektrik ➔ Tenaga Cahaya + Tenaga Haba",
+          "Tenaga Kinetik ➔ Tenaga Elektrik ➔ Tenaga Bunyi",
+          "Tenaga Haba ➔ Tenaga Kimia ➔ Tenaga Cahaya",
+          "Tenaga Keupayaan ➔ Tenaga Kinetik ➔ Tenaga Haba"
+        ],
+        jawapan: 0
+      },
+      {
+        unit: "Unit 8: Bahan",
+        soalan: "Bahan manakah yang berasal daripada sumber petroleum?",
+        pilihan: ["Kapas dan sutera", "Plastik dan kain sintetik", "Kayu dan getah", "Logam dan kaca"],
+        jawapan: 1
+      },
+      {
+        unit: "Unit 9: Bumi",
+        soalan: "Kejadian siang dan malam berlaku disebabkan oleh:",
+        pilihan: [
+          "Peredaran Bulan mengelilingi Bumi",
+          "Peredaran Bumi mengelilingi Matahari",
+          "Putaran Bumi pada paksinya dari barat ke timur",
+          "Bumi berhenti berputar pada waktu malam"
+        ],
+        jawapan: 2
+      },
+      {
+        unit: "Unit 10: Mesin",
+        soalan: "Dalam sistem tuas, apakah titik tetap yang menjadi sokongan bagi pergerakan beban dan daya?",
+        pilihan: ["Beban", "Daya", "Fulkrum", "Takal"],
+        jawapan: 2
+      }
+    ];
+
+    // --- 2. SINTESIS AUDIO (WEB AUDIO API) ---
+    // Menghasilkan bunyi tanpa memerlukan fail audio luar
+    const AudioEngine = {
+      ctx: null,
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+      },
+      playCorrect() {
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.frequency.setValueAtTime(587.33, now); // D5
+        osc.frequency.setValueAtTime(880, now + 0.1); // A5
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+        osc.start(now);
+        osc.stop(now + 0.35);
+      },
+      playWrong() {
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(130, now + 0.25);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+        osc.start(now);
+        osc.stop(now + 0.3);
+      },
+      playFinish() {
+        this.init();
+        const freqs = [523.25, 659.25, 783.99, 1046.50];
+        freqs.forEach((f, idx) => {
+          const now = this.ctx.currentTime + (idx * 0.1);
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.frequency.setValueAtTime(f, now);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+          osc.start(now);
+          osc.stop(now + 0.4);
+        });
+      }
+    };
+
+    // --- 3. LOGIK SUPABASE & FALLBACK TEMPATAN ---
+    let supabaseUrl = localStorage.getItem('SP_URL') || '';
+    let supabaseKey = localStorage.getItem('SP_KEY') || '';
+    let dbClient = null;
+
+    function initSupabase() {
+      if (supabaseUrl && supabaseKey && window.supabase) {
+        try {
+          dbClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+        } catch (e) {
+          console.error("Ralat init Supabase:", e);
+          dbClient = null;
+        }
+      }
+    }
+    initSupabase();
+
+    // --- 4. STATUS PERMAINAN ---
+    let namaPemain = '';
+    let kelasPemain = '';
+    let indeksSoalan = 0;
+    let skorTerkumpul = 0;
+    let soalanBetul = 0;
+    let streakSemasa = 0;
+    let pemasaId = null;
+    let bakiMasa = 15;
+
+    // Rujukan Elemen
+    const skrinMula = document.getElementById('skrin-mula');
+    const skrinKuiz = document.getElementById('skrin-kuiz');
+    const skrinKeputusan = document.getElementById('skrin-keputusan');
+    const skrinLeaderboard = document.getElementById('skrin-leaderboard');
+
+    function paparkanSkrin(skrin) {
+      [skrinMula, skrinKuiz, skrinKeputusan, skrinLeaderboard].forEach(s => s.classList.add('hidden'));
+      skrin.classList.remove('hidden');
+    }
+
+    function keSkrinMula() {
+      clearInterval(pemasaId);
+      paparkanSkrin(skrinMula);
+    }
+
+    function mulaPermainan() {
+      const nama = document.getElementById('input-nama').value.trim();
+      const kelas = document.getElementById('input-kelas').value.trim();
+
+      if (!nama || !kelas) {
+        alert('Sila isi nama dan kelas terlebih dahulu!');
+        return;
+      }
+
+      namaPemain = nama;
+      kelasPemain = kelas;
+      indeksSoalan = 0;
+      skorTerkumpul = 0;
+      soalanBetul = 0;
+      streakSemasa = 0;
+
+      kemaskiniStatusGamifikasi();
+      paparkanSkrin(skrinKuiz);
+      janaSoalan();
+    }
+
+    function kemaskiniStatusGamifikasi() {
+      document.getElementById('label-skor').innerText = skorTerkumpul;
+      const badgeStreak = document.getElementById('badge-streak');
+      const valStreak = document.getElementById('nilai-streak');
+
+      if (streakSemasa >= 2) {
+        valStreak.innerText = streakSemasa;
+        badgeStreak.classList.remove('hidden');
+      } else {
+        badgeStreak.classList.add('hidden');
+      }
+    }
+
+    function janaSoalan() {
+      clearInterval(pemasaId);
+      const dataSoalan = bankSoalan[indeksSoalan];
+
+      // Kemaskini Teks & Bar Kemajuan
+      document.getElementById('label-unit').innerText = dataSoalan.unit;
+      document.getElementById('label-kemajuan').innerText = `Soalan ${indeksSoalan + 1} / ${bankSoalan.length}`;
+      document.getElementById('teks-soalan').innerText = dataSoalan.soalan;
+      
+      const peratus = ((indeksSoalan) / bankSoalan.length) * 100;
+      document.getElementById('bar-kemajuan').style.width = `${peratus}%`;
+
+      // Kemaskini Pilihan Butang
+      const kontena = document.getElementById('kontena-pilihan');
+      kontena.innerHTML = '';
+
+      dataSoalan.pilihan.forEach((pilihan, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3.5 rounded-xl border border-slate-200 bg-white hover:border-sky-400 hover:bg-sky-50 font-semibold text-slate-700 text-sm transition transform active:scale-[0.99] flex items-center justify-between shadow-sm";
+        btn.innerHTML = `<span>${pilihan}</span> <span class="text-xs text-slate-300 font-bold uppercase tracking-wider">Pilih</span>`;
+        btn.onclick = () => semakJawapan(idx, btn);
+        kontena.appendChild(btn);
+      });
+
+      // Mulakan Pemasa 15 Saat
+      bakiMasa = 15;
+      const pemasaLabel = document.getElementById('label-pemasa');
+      pemasaLabel.innerText = `${bakiMasa}s`;
+      pemasaLabel.className = "text-sm font-black bg-white px-2.5 py-1 rounded-lg shadow-sm border border-slate-200 text-sky-600";
+
+      pemasaId = setInterval(() => {
+        bakiMasa--;
+        pemasaLabel.innerText = `${bakiMasa}s`;
+
+        if (bakiMasa <= 5) {
+          pemasaLabel.className = "text-sm font-black bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-300 text-rose-600 timer-danger";
+        }
+
+        if (bakiMasa <= 0) {
+          clearInterval(pemasaId);
+          AudioEngine.playWrong();
+          kunciPilihan(false);
+          streakSemasa = 0;
+          kemaskiniStatusGamifikasi();
+          tungguDanLanjut();
+        }
+      }, 1000);
+    }
+
+    function semakJawapan(pilihanIndex, btnElement) {
+      clearInterval(pemasaId);
+      const betul = pilihanIndex === bankSoalan[indeksSoalan].jawapan;
+
+      if (betul) {
+        AudioEngine.playCorrect();
+        soalanBetul++;
+        streakSemasa++;
+        
+        // Pengganda Streak: Makin laju & makin panjang combo, makin tinggi skor
+        const multiplier = streakSemasa >= 3 ? 1.5 : (streakSemasa >= 2 ? 1.2 : 1.0);
+        const mataBonusMasa = bakiMasa * 2;
+        const mataAsas = 100;
+        const mataDiterima = Math.round((mataAsas + mataBonusMasa) * multiplier);
+
+        skorTerkumpul += mataDiterima;
+        btnElement.classList.remove('bg-white', 'border-slate-200');
+        btnElement.classList.add('bg-emerald-50', 'border-emerald-500', 'text-emerald-700');
+      } else {
+        AudioEngine.playWrong();
+        streakSemasa = 0;
+        btnElement.classList.remove('bg-white', 'border-slate-200');
+        btnElement.classList.add('bg-rose-50', 'border-rose-500', 'text-rose-700');
+      }
+
+      kunciPilihan(true);
+      kemaskiniStatusGamifikasi();
+      tungguDanLanjut();
+    }
+
+    function kunciPilihan(adaPilihan) {
+      const btns = document.getElementById('kontena-pilihan').getElementsByTagName('button');
+      const jawapanBetulIdx = bankSoalan[indeksSoalan].jawapan;
+
+      for (let i = 0; i < btns.length; i++) {
+        btns[i].disabled = true;
+        if (i === jawapanBetulIdx) {
+          btns[i].classList.add('bg-emerald-500', 'text-white', 'border-emerald-600');
+        }
+      }
+    }
+
+    function tungguDanLanjut() {
+      setTimeout(() => {
+        indeksSoalan++;
+        if (indeksSoalan < bankSoalan.length) {
+          janaSoalan();
+        } else {
+          tamatKuiz();
+        }
+      }, 1200);
+    }
+
+    async function tamatKuiz() {
+      document.getElementById('bar-kemajuan').style.width = '100%';
+      paparkanSkrin(skrinKeputusan);
+      AudioEngine.playFinish();
+
+      // Kesan Konfeti
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+      }
+
+      // Penilaian Skor & Lencana
+      const peratus = Math.round((soalanBetul / bankSoalan.length) * 100);
+      document.getElementById('skor-akhir').innerText = skorTerkumpul;
+      document.getElementById('peratus-ketepatan').innerText = `${peratus}% (${soalanBetul}/${bankSoalan.length} Betul)`;
+
+      const lencanaIcon = document.getElementById('lencana-icon');
+      const lencanaTajuk = document.getElementById('lencana-tajuk');
+      const lencanaPenerangan = document.getElementById('lencana-penerangan');
+
+      if (peratus >= 80) {
+        lencanaIcon.innerText = "🏆";
+        lencanaTajuk.innerText = "Saintis Elit (Tahap Cemerlang)";
+        lencanaPenerangan.innerText = "Tahniah! Pemahaman sains dan kemahiran berfikir anda amat hebat!";
+      } else if (peratus >= 50) {
+        lencanaIcon.innerText = "🌟";
+        lencanaTajuk.innerText = "Penyelidik Gigih";
+        lencanaPenerangan.innerText = "Usaha yang bagus! Tingkatkan lagi penelitian soalan untuk jadi saintis elit!";
+      } else {
+        lencanaIcon.innerText = "🔬";
+        lencanaTajuk.innerText = "Pelatih Makmal";
+        lencanaPenerangan.innerText = "Teruskan latihan dan membaca buku teks Sains Tahun 4. Jangan putus asa!";
+      }
+
+      // Simpan Markah ke Supabase atau LocalStorage
+      hantarMarkahKeAwan(peratus);
+    }
+
+    async function hantarMarkahKeAwan(peratus) {
+      const statusEl = document.getElementById('status-hantar');
+
+      // 1. Simpan ke rekod tempatan sebagai backup (Offline-first)
+      simpanRekodTempatan(namaPemain, kelasPemain, skorTerkumpul);
+
+      // 2. Jika Supabase disambungkan
+      if (dbClient) {
+        statusEl.innerText = "Menghantar markah ke pelayan awan Supabase...";
+        try {
+          const { error } = await dbClient
+            .from('leaderboard')
+            .insert([{ player_name: namaPemain, school_class: kelasPemain, score: skorTerkumpul }]);
+
+          if (error) throw error;
+          statusEl.innerHTML = "<span class='text-emerald-600 font-bold'>✅ Markah rasmi berjaya direkodkan di papan pendahulu!</span>";
+        } catch (err) {
+          console.warn("Ralat Supabase:", err);
+          statusEl.innerText = "Tersimpan dalam storan telefon/komputer (Ralat Cloud).";
+        }
+      } else {
+        statusEl.innerText = "Mod Tempatan: Kunci Supabase belum disetkan.";
+      }
+    }
+
+    function simpanRekodTempatan(nama, kelas, skor) {
+      const rekodLama = JSON.parse(localStorage.getItem('LOCAL_LEADERBOARD') || '[]');
+      rekodLama.push({ player_name: nama, school_class: kelas, score: skor, created_at: new Date().toISOString() });
+      rekodLama.sort((a, b) => b.score - a.score);
+      localStorage.setItem('LOCAL_LEADERBOARD', JSON.stringify(rekodLama.slice(0, 15)));
+    }
+
+    async function paparPapanPendahulu() {
+      paparkanSkrin(skrinLeaderboard);
+      const tbody = document.getElementById('badan-leaderboard');
+      tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">Memuatkan data terkini...</td></tr>';
+
+      let senaraiSkor = [];
+
+      if (dbClient) {
+        try {
+          const { data, error } = await dbClient
+            .from('leaderboard')
+            .select('*')
+            .order('score', { ascending: false })
+            .limit(10);
+
+          if (!error && data) {
+            senaraiSkor = data;
+          }
+        } catch (e) {
+          console.warn("Gagal memuat turun data awan:", e);
+        }
+      }
+
+      // Jika data Supabase kosong / belum diset, guna data peranti
+      if (senaraiSkor.length === 0) {
+        senaraiSkor = JSON.parse(localStorage.getItem('LOCAL_LEADERBOARD') || '[]');
+      }
+
+      if (senaraiSkor.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-400">Belum ada rekod permainan. Jadilah yang pertama!</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = senaraiSkor.slice(0, 10).map((item, idx) => {
+        let pingat = `${idx + 1}`;
+        if (idx === 0) pingat = '🥇 1';
+        if (idx === 1) pingat = '🥈 2';
+        if (idx === 2) pingat = '🥉 3';
+
+        return `
+          <tr class="${idx === 0 ? 'bg-amber-50/70 font-bold' : ''}">
+            <td class="p-3 text-center font-bold text-slate-600">${pingat}</td>
+            <td class="p-3 text-slate-800">${escapeHtml(item.player_name)}</td>
+            <td class="p-3 text-slate-500">${escapeHtml(item.school_class || '-')}</td>
+            <td class="p-3 text-right font-black text-indigo-600">${item.score}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Modal Config Tetapan
+    function bukaModalConfig() {
+      document.getElementById('cfg-url').value = localStorage.getItem('SP_URL') || '';
+      document.getElementById('cfg-key').value = localStorage.getItem('SP_KEY') || '';
+      document.getElementById('modal-config').classList.remove('hidden');
+    }
+
+    function tutupModalConfig() {
+      document.getElementById('modal-config').classList.add('hidden');
+    }
+
+    function simpanConfig() {
+      const url = document.getElementById('cfg-url').value.trim();
+      const key = document.getElementById('cfg-key').value.trim();
+
+      localStorage.setItem('SP_URL', url);
+      localStorage.setItem('SP_KEY', key);
+      supabaseUrl = url;
+      supabaseKey = key;
+
+      initSupabase();
+      tutupModalConfig();
+      alert('Tetapan berjaya disimpan!');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  </script>
+</body>
+</html>
